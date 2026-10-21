@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OffscreenCanvas cross-process transfer</title>
+<style>
+  body { margin: 0; padding: 16px; font: 13px/1.6 system-ui, sans-serif;
+         color: #202124; background: #fff; }
+  h1 { font-size: 15px; margin: 0 0 12px; }
+  #status { padding: 8px 10px; border-radius: 6px; font-weight: 600; }
+  #status.alive { background: #e6f4ea; color: #137333; }
+  #status.dead { background: #fce8e6; color: #c5221f; }
+  canvas { border: 1px solid #dadce0; display: block; margin: 12px 0; }
+  iframe { width: 320px; height: 70px; border: 1px solid #dadce0; }
+  .label { font: 11px/1.4 monospace; color: #5f6368; }
+</style>
+</head>
+<body>
+<h1>OffscreenCanvas transferred to a cross-site iframe</h1>
+<div id="status">starting</div>
+
+<div class="label">placeholder canvas in this page (a.test)</div>
+<canvas id="canvas" width="160" height="120"></canvas>
+
+<div class="label">cross-site iframe that received the canvas (b.test)</div>
+<iframe id="child"></iframe>
+
+<script>
+const params = new URLSearchParams(location.search);
+const status = document.getElementById('status');
+const child = document.getElementById('child');
+const offscreen = document.getElementById('canvas').transferControlToOffscreen();
+
+let pongs = 0;
+let lastPong = 0;
+
+child.onload = () => {
+  child.contentWindow.postMessage(offscreen, '*', [offscreen]);
+  lastPong = performance.now();
+  setInterval(() => {
+    child.contentWindow.postMessage('ping', '*');
+    const quiet = performance.now() - lastPong;
+    if (quiet > 1500) {
+      status.className = 'dead';
+      status.textContent =
+          'child renderer is gone (no reply for ' + Math.round(quiet) +
+          'ms) - killed for a bad message';
+    }
+  }, 300);
+};
+
+window.onmessage = (event) => {
+  if (event.data !== 'pong') {
+    return;
+  }
+  pongs++;
+  lastPong = performance.now();
+  status.className = 'alive';
+  status.textContent = 'child renderer is alive (' + pongs + ' replies)';
+};
+
+child.src = params.get('child') || 'http://b.test:8765/child.html';
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>child</title></head>
+<body style="margin:0;font:12px/1.5 system-ui,sans-serif">
+<p id="state">waiting for the canvas</p>
+<script>
+let canvas = null;
+let frames = 0;
+
+function draw() {
+  const context = canvas.getContext('2d');
+  context.fillStyle = frames % 2 ? '#1a73e8' : '#e8710a';
+  context.fillRect(0, 0, 160, 120);
+  frames++;
+  document.getElementById('state').textContent =
+      'drawing into the transferred canvas, frame ' + frames;
+  requestAnimationFrame(draw);
+}
+
+window.onmessage = (event) => {
+  if (event.data === 'ping') {
+    event.source.postMessage('pong', '*');
+    return;
+  }
+  canvas = event.data;
+  requestAnimationFrame(draw);
+};
+</script>
+</body>
+</html>
